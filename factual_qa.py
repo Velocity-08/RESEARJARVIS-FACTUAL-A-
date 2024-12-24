@@ -54,9 +54,9 @@ def fetch_google_results(query):
             title = g.select_one(".DKV0Md").text
             link = g.select_one(".yuRUbf a")["href"]
             snippet = g.select_one(".VwiC3b").text if g.select_one(".VwiC3b") else "No description available"
-            results.append(f"Title: {title}\nSnippet: {snippet}\nLink: {link}")
-        return "\n\n".join(results[:3])
-    return "Failed to fetch search results."
+            results.append({"title": title, "link": link, "snippet": snippet})
+        return results
+    return []
 
 # Wolfram Alpha API Integration
 def fetch_wolfram_alpha(query):
@@ -160,7 +160,7 @@ def answer_question(question, api_key=None):
             return "No results found."
         
         # Fetch and summarize content from the top result
-        top_result_url = results.split("\n")[0].split("Link: ")[1]
+        top_result_url = results[0]["link"]  # Extract the link from the top result
         content = fetch_page_content(top_result_url)
         if content:
             return summarize_text(content[:2000])
