@@ -1,9 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from transformers import pipeline
 
-# Time-related queries
+# Function for time-related queries
 def get_current_time():
     return f"The current time is: {datetime.now().strftime('%H:%M:%S')}"
 
@@ -39,7 +38,7 @@ def fetch_wikipedia_summary(query):
         return data.get("extract", "No summary available.") + f"\nRead more: {data.get('content_urls', {}).get('desktop', {}).get('page', '')}"
     return "Topic not found on Wikipedia."
 
-# Google Search Integration
+# General Search Integration
 def fetch_google_results(query):
     query = query.replace(" ", "+")
     url = f"https://www.google.com/search?q={query}"
@@ -90,49 +89,8 @@ def fetch_stock_data_finnhub(stock_symbol):
     else:
         return f"Could not retrieve stock data for {stock_symbol}. Please check the ticker symbol or try again later."
 
-# NewsAPI Function to fetch latest news
-def fetch_latest_news(query, api_key):
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey={api_key}"
-    response = requests.get(url)
-    data = response.json()
-
-    if response.status_code == 200:
-        # Extracting top news article
-        articles = data.get('articles', [])
-        if articles:
-            title = articles[0]['title']
-            description = articles[0]['description']
-            url = articles[0]['url']
-            return f"Latest news: {title} - {description}. Read more at {url}"
-        else:
-            return "No news articles found."
-    else:
-        return "Error fetching news."
-
-# Function to fetch and summarize page content from the top Google result
-def fetch_page_content(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.199 Safari/537.36"
-    }
-
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "lxml")
-        paragraphs = soup.find_all("p")
-        content = " ".join([para.text for para in paragraphs])
-        return content
-    else:
-        print(f"Failed to fetch content: {response.status_code}")
-        return None
-
-# Summarize the fetched content using Hugging Face Transformers
-def summarize_text(content):
-    summarizer = pipeline("summarization")
-    summary = summarizer(content, max_length=150, min_length=40, do_sample=False)
-    return summary[0]['summary_text']
-
 # Main function for handling user questions
-def answer_question(question, api_key=None):
+def answer_question(question):
     if "time" in question.lower():
         return get_current_time()
     elif "weather" in question.lower():
@@ -148,31 +106,20 @@ def answer_question(question, api_key=None):
         return fetch_wolfram_alpha(question)
     elif "stock" in question.lower() or "market" in question.lower():
         stock_symbol = question.split("for")[-1].strip()
-        return fetch_stock_data_finnhub(stock_symbol)
-    elif "news" in question.lower():
-        if api_key:
-            return fetch_latest_news(" ".join(question.split()[1:]), api_key)
-        else:
-            return "News API key not provided."
-    else:
-        results = fetch_google_results(question)
-        if not results:
-            return "No results found."
         
-        # Fetch and summarize content from the top result
-        top_result_url = results.split("\n")[0].split("Link: ")[1]
-        content = fetch_page_content(top_result_url)
-        if content:
-            return summarize_text(content[:2000])
-        else:
-            return "Failed to fetch content from the top result."
+        # Adjust for ticker symbol format (like 'TATAMOTORS.NS' for Tata Motors)
+        if stock_symbol.lower() == "tata motors ltd":
+            stock_symbol = "TATAMOTORS.NS"
+            
+        return fetch_stock_data_finnhub(stock_symbol)
+    else:
+        return fetch_google_results(question)
 
-# Example Usage
+# Interactive mode
 if __name__ == "__main__":
-    api_key = '892dac80a5474aa0a4deae8f7f484dc6'  # Replace with your actual NewsAPI key
     while True:
         question = input("Enter your question (or type 'exit' to quit): ")
         if question.lower() == "exit":
             print("Goodbye!")
             break
-        print("\n" + answer_question(question, api_key) + "\n")
+        print("\n" + answer_question(question) + "\n")
